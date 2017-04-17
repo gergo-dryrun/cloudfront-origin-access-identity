@@ -1,0 +1,14 @@
+[
+  {
+    "ParameterKey": "CloudFrontAccessLogBucket",
+    "ParameterValue": "example-com-infra-logs"
+  },
+  {
+    "ParameterKey": "OriginBucketName",
+    "ParameterValue": "cdn.example.com"
+  },
+  {
+    "ParameterKey": "CloudFrontAliases",
+    "ParameterValue": "cdn.example.com"
+  }
+]

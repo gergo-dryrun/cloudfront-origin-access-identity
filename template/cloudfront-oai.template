@@ -21,8 +21,6 @@ Resources:
         Variables:
           STACK_NAME: !Ref AWS::StackName
       Code: ../code/publish/create_oai.zip
-#        S3Bucket: dryrun.cloud-resources
-#        S3Key: 2017-04-09-getting-started-static-sites/create_oai.zip
 
   LambdaExecutionerRole:
     Type: AWS::IAM::Role
@@ -55,17 +53,9 @@ Resources:
             Effect: Allow
             Action:
               - logs:CreateLogGroup
-            Resource:
-              !Sub |-
-                arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*
-          -
-            Effect: Allow
-            Action:
               - logs:CreateLogStream
               - logs:PutLogEvents
-            Resource:
-              !Sub |-
-                arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+            Resource: "*"
       Roles:
         -
           !Ref LambdaExecutionerRole
