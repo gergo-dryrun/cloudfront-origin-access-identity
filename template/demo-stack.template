@@ -1,0 +1,88 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Creates CloudFront distribution with s3 as origin.'
+
+Parameters:
+  CloudFrontAliases:
+    Type: CommaDelimitedList
+    Description: Comma separated aliases for cloudfront distribution.
+    Default: cdn.gergo.me
+  OriginBucketName:
+    Description: FQDN of site
+    Type: String
+    Default: cdn.gergo.me
+#  S3CanonicalUserId:
+#    Description: S3CanonicalUserId of Origin Access Identity
+#    Type: String
+#  OriginAccessId:
+#    Description: Id of Origin Access Identity
+#    Type: String
+  CloudFrontAccessLogBucket:
+    Type: String
+    Default: ''
+    Description: "Enter a name for the Amazon S3 bucket where you want to store Amazon\
+      \ CloudFront access logs. Has to be an existing bucket."
+
+
+Resources:
+
+  CloudFrontOAI:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./cloudfront-oai-final.template # https://s3-eu-west-1.amazonaws.com/dryrun.cloud-resources/2017-04-09-getting-started-static-sites/template/cloudfront-oai.template
+      TimeoutInMinutes: '15'
+
+  CfDistribution:
+    Type: AWS::CloudFront::Distribution
+    DependsOn:
+      - S3Bucket
+    Properties:
+      DistributionConfig:
+        Origins:
+        - DomainName: !Ref OriginBucketName
+          Id: live-s3-origin
+          S3OriginConfig:
+             OriginAccessIdentity: !Sub origin-access-identity/cloudfront/${CloudFrontOAI.OriginAccessId}
+        Enabled: true
+        HttpVersion: http2
+        Aliases: !Ref CloudFrontAliases
+        DefaultRootObject: index.html
+        Comment: !Sub Distribution for ${OriginBucketName}
+        DefaultCacheBehavior:
+          TargetOriginId: live-s3-origin
+          Compress: true
+          ForwardedValues:
+            QueryString: false
+          ViewerProtocolPolicy: allow-all
+        PriceClass: PriceClass_100
+        Logging:
+          Bucket: !Sub ${CloudFrontAccessLogBucket}.s3.amazonaws.com
+          Prefix: !Sub ${OriginBucketName}/
+
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Ref OriginBucketName
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+
+  LiveBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref OriginBucketName
+      PolicyDocument:
+        Statement:
+          -
+            Action:
+              - s3:GetObject
+            Effect: Allow
+            Resource: !Sub arn:aws:s3:::${OriginBucketName}/*
+            Principal:
+              CanonicalUser: !GetAtt CloudFrontOAI.S3CanonicalUserId
+
+Outputs:
+  LiveWebsiteURL:
+    Value: !GetAtt CfDistribution.DomainName
+    Description: CloudFront distribution domain name. Update DNS accordingly.
+

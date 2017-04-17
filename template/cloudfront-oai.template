@@ -1,0 +1,79 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Custom cloudformation resource to create CloudFront distribution origin access identity.'
+
+Resources:
+
+  CloudFrontOAI:
+    Type: Custom::CloudFrontOAI
+    DependsOn: LambdaRolePolicies
+    Properties:
+      ServiceToken: !GetAtt CreateOAI.Arn
+
+  CreateOAI:
+    Type: AWS::Lambda::Function
+    DependsOn: LambdaRolePolicies
+    Properties:
+      Runtime: python2.7
+      Handler: create_oai.handler
+      Role: !GetAtt LambdaExecutionerRole.Arn
+      Timeout: 300
+      Environment:
+        Variables:
+          STACK_NAME: !Ref AWS::StackName
+      Code: ../code/publish/create_oai.zip
+#        S3Bucket: dryrun.cloud-resources
+#        S3Key: 2017-04-09-getting-started-static-sites/create_oai.zip
+
+  LambdaExecutionerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+
+  LambdaRolePolicies:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: cf-oai-permission
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Action:
+              - cloudfront:*CloudFrontOriginAccess*
+            Resource: "*"
+          -
+            Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+            Resource:
+              !Sub |-
+                arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*
+          -
+            Effect: Allow
+            Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource:
+              !Sub |-
+                arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+      Roles:
+        -
+          !Ref LambdaExecutionerRole
+
+Outputs:
+  OriginAccessId:
+    Value: !Ref CloudFrontOAI
+    Description: Cloudfront OAI Id
+  S3CanonicalUserId:
+    Value: !GetAtt CloudFrontOAI.oai_s3_user_id
+    Description: S3 Canonical User Id of OAI

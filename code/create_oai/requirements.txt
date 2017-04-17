@@ -1,0 +1,2 @@
+cfn-resource==0.2.2
+retrying==1.3.3
